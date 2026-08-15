@@ -24,10 +24,11 @@ export default function HowItWorksPage() {
             </p>
           </li>
           <li>
-            <strong className="text-[#1B3A4B]">3. We generate safely</strong>
+            <strong className="text-[#1B3A4B]">3. We generate a photo comic strip</strong>
             <p className="mt-1 text-sm">
-              Fixed theme templates (no free-form prompts). Content is moderated before you see
-              it. Photos are held in memory only — never written to our disk or database.
+              Like an online photo-comic maker, your child becomes the star of a 4-panel strip —
+              but StoryToon uses AI to stylize the photo into an original cartoon avatar (not a
+              raw photo collage). Themes and safety templates are fixed. Photos stay in memory only.
             </p>
           </li>
           <li>

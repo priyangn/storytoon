@@ -93,6 +93,7 @@ export async function POST(req: Request) {
         id: panel.id,
         caption: panel.caption,
         sceneLabel: panel.sceneLabel,
+        speechBubble: panel.speechBubble,
         bg: panel.bg,
       })),
     });

@@ -37,6 +37,7 @@ export interface ComicPanel {
   id: string;
   caption: string;
   sceneLabel: string;
+  speechBubble?: string;
   bg: string;
   /** Ephemeral base64 data URL from Gemini — not persisted server-side long-term */
   imageDataUrl?: string;

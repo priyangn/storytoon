@@ -19,10 +19,10 @@ export default function HomePage() {
                 StoryToon
               </p>
               <h1 className="mt-4 max-w-md text-xl font-semibold leading-snug text-[#1B3A4B]/90 sm:text-2xl">
-                Your child stars in a joyful, original comic — made safely for parents.
+                Turn your child’s photo into a joyful comic strip — safe, original themes for parents.
               </h1>
               <p className="mt-4 max-w-md text-base text-[#1B3A4B]/70">
-                Photo stays in memory only. Export a print-ready PDF in minutes.
+                Photo → stylized avatar → 4-panel comic strip. Privacy-first; export a print-ready PDF.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
@@ -45,7 +45,7 @@ export default function HomePage() {
                 <div className="flex h-full flex-col justify-between rounded-[1.85rem] bg-[#FFF8F0]/95 p-6">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-widest text-[#FF6B35]">
-                      Sample comic · illustrated
+                      Sample photo comic strip
                     </p>
                     <p className="mt-3 font-[family-name:var(--font-display)] text-2xl font-bold text-[#1B3A4B]">
                       The Kindness Cape

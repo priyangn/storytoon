@@ -10,52 +10,53 @@ function dataUrlFormat(dataUrl: string): "PNG" | "JPEG" | "WEBP" {
   return "PNG";
 }
 
+/**
+ * Export as a photo-comic strip: cover page + one 2×2 strip page (Fotojet-like layout).
+ */
 export function downloadComicPdf(comic: GeneratedComic): void {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const theme = getTheme(comic.themeId);
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const margin = 40;
+  const margin = 36;
 
-  // Cover
+  // —— Cover page ——
   doc.setFillColor(theme.accent);
-  doc.rect(0, 0, pageW, pageH * 0.28, "F");
+  doc.rect(0, 0, pageW, 100, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(26);
-  doc.text("StoryToon", margin, 56);
-  doc.setFontSize(20);
-  doc.text(comic.title, margin, 88, { maxWidth: pageW - margin * 2 });
-  doc.setFontSize(13);
-  doc.text(`Starring ${comic.childName}`, margin, 118);
+  doc.setFontSize(24);
+  doc.text("StoryToon Photo Comic", margin, 48);
+  doc.setFontSize(18);
+  doc.text(comic.title, margin, 78, { maxWidth: pageW - margin * 2 });
 
   if (comic.coverImageDataUrl) {
     try {
-      const fmt = dataUrlFormat(comic.coverImageDataUrl);
       doc.addImage(
         comic.coverImageDataUrl,
-        fmt,
+        dataUrlFormat(comic.coverImageDataUrl),
         margin,
-        140,
+        120,
         pageW - margin * 2,
-        pageH * 0.48,
+        pageH * 0.52,
         undefined,
         "FAST"
       );
     } catch {
-      // skip broken image
+      // skip
     }
   }
 
   doc.setTextColor(40, 40, 40);
+  doc.setFontSize(13);
+  doc.text(`Starring ${comic.childName}`, margin, pageH - 90);
   if (comic.dedication) {
     doc.setFont("helvetica", "italic");
-    doc.setFontSize(12);
-    doc.text(comic.dedication, margin, pageH - 72, {
+    doc.setFontSize(11);
+    doc.text(comic.dedication, margin, pageH - 70, {
       maxWidth: pageW - margin * 2,
     });
   }
-
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
@@ -64,26 +65,42 @@ export function downloadComicPdf(comic: GeneratedComic): void {
     maxWidth: pageW - margin * 2,
   });
 
-  comic.panels.forEach((panel, index) => {
-    doc.addPage();
-    doc.setFillColor(245, 247, 250);
-    doc.rect(0, 0, pageW, pageH, "F");
+  // —— Comic strip page (2×2 grid) ——
+  doc.addPage();
+  doc.setFillColor(27, 58, 75);
+  doc.rect(0, 0, pageW, pageH, "F");
 
-    doc.setTextColor(theme.accent);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(`Panel ${index + 1}: ${panel.sceneLabel}`, margin, margin);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text(`${comic.title} — Comic Strip`, margin, 28);
+
+  const gutter = 10;
+  const gridTop = 44;
+  const gridBottomPad = 56;
+  const cellW = (pageW - margin * 2 - gutter) / 2;
+  const cellH = (pageH - gridTop - gridBottomPad - gutter) / 2;
+  const imageH = cellH * 0.72;
+  const textH = cellH - imageH;
+
+  comic.panels.slice(0, 4).forEach((panel, index) => {
+    const col = index % 2;
+    const row = Math.floor(index / 2);
+    const x = margin + col * (cellW + gutter);
+    const y = gridTop + row * (cellH + gutter);
+
+    doc.setFillColor(255, 248, 240);
+    doc.rect(x, y, cellW, cellH, "F");
 
     if (panel.imageDataUrl) {
       try {
-        const fmt = dataUrlFormat(panel.imageDataUrl);
         doc.addImage(
           panel.imageDataUrl,
-          fmt,
-          margin,
-          margin + 16,
-          pageW - margin * 2,
-          pageH * 0.55,
+          dataUrlFormat(panel.imageDataUrl),
+          x + 4,
+          y + 4,
+          cellW - 8,
+          imageH - 8,
           undefined,
           "FAST"
         );
@@ -92,17 +109,28 @@ export function downloadComicPdf(comic: GeneratedComic): void {
       }
     }
 
-    doc.setTextColor(50, 50, 50);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-    doc.text(panel.caption, margin, pageH - 80, {
-      maxWidth: pageW - margin * 2,
-    });
+    doc.setFillColor(255, 248, 240);
+    doc.rect(x, y + imageH, cellW, textH, "F");
+    doc.setDrawColor(27, 58, 75);
+    doc.setLineWidth(2);
+    doc.rect(x, y, cellW, cellH);
 
-    doc.setFontSize(9);
-    doc.setTextColor(120, 120, 120);
-    doc.text("Made with AI · StoryToon", margin, pageH - 40);
+    doc.setTextColor(27, 58, 75);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(`${index + 1}. ${panel.sceneLabel}`, x + 8, y + imageH + 14, {
+      maxWidth: cellW - 16,
+    });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(panel.caption, x + 8, y + imageH + 28, {
+      maxWidth: cellW - 16,
+    });
   });
 
-  doc.save(`StoryToon-${comic.childName.replace(/\s+/g, "-")}.pdf`);
+  doc.setFontSize(8);
+  doc.setTextColor(200, 210, 220);
+  doc.text("Made with AI · StoryToon photo comic strip", margin, pageH - 24);
+
+  doc.save(`StoryToon-${comic.childName.replace(/\s+/g, "-")}-comic-strip.pdf`);
 }

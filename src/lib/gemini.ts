@@ -1,6 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 import { getTheme } from "./themes";
-import { SAFETY_PREFIX, THEME_STORY_SPECS } from "./theme-prompts";
+import {
+  PHOTO_COMIC_STYLE,
+  SAFETY_PREFIX,
+  THEME_STORY_SPECS,
+} from "./theme-prompts";
 import { sanitizeText } from "./sanitize";
 import type { GeneratedComic, ThemeId } from "./types";
 
@@ -33,6 +37,7 @@ function parseDataUrl(dataUrl: string): { mimeType: string; data: string } {
 interface ScriptPanel {
   sceneLabel: string;
   caption: string;
+  speechBubble: string;
   imagePrompt: string;
   bg: string;
 }
@@ -57,7 +62,8 @@ function extractJson(text: string): ComicScript {
     panels: parsed.panels.slice(0, 4).map((p, i) => ({
       sceneLabel: sanitizeText(p.sceneLabel || `Panel ${i + 1}`, 40),
       caption: sanitizeText(p.caption || "", 180),
-      imagePrompt: sanitizeText(p.imagePrompt || "", 400),
+      speechBubble: sanitizeText(p.speechBubble || "", 60),
+      imagePrompt: sanitizeText(p.imagePrompt || "", 420),
       bg: /^#[0-9A-Fa-f]{6}$/.test(p.bg || "") ? p.bg : "#FFF3E0",
     })),
   };
@@ -74,36 +80,40 @@ async function generateScript(
 
   const prompt = `${SAFETY_PREFIX}
 
-Create a 4-panel children's comic script for StoryToon.
-Child's first name (insert into captions naturally): ${childName}
-Approximate age range: ${ageRange || "6-8"}
+Create a 4-panel PHOTO COMIC STRIP script (like an online photo-comic maker, but AI-illustrated).
+The child's photo will be turned into a stylized comic avatar who stars in every panel.
+
+Child's first name: ${childName}
+Age range: ${ageRange || "6-8"}
 Theme: ${theme.name} — ${theme.tagline}
 Archetype: ${spec.archetype}
 Tone: ${spec.tone}
 Setting: ${spec.setting}
-Art style notes: ${spec.artStyle}
+Art direction: ${spec.artStyle}
 Must include: ${spec.mustInclude.join(", ")}
 Must avoid: ${spec.mustAvoid.join(", ")}
 
-Return ONLY valid JSON with this shape:
+Return ONLY valid JSON:
 {
   "title": "string",
   "panels": [
     {
-      "sceneLabel": "short title",
-      "caption": "1-2 friendly sentences using the child's name",
-      "imagePrompt": "detailed visual description for one comic panel illustration, no text balloons",
-      "bg": "#RRGGBB soft pastel hex for UI card"
+      "sceneLabel": "short panel title",
+      "caption": "1 sentence narrative under the panel",
+      "speechBubble": "very short dialogue (max 8 words) spoken by the child hero",
+      "imagePrompt": "visual description for one comic panel featuring the child avatar",
+      "bg": "#RRGGBB"
     }
   ]
 }
-Exactly 4 panels. No franchise names. No violence.`;
+Exactly 4 panels that read left-to-right, top-to-bottom as one comic strip page.
+No franchise names. No violence.`;
 
   const response = await ai.models.generateContent({
     model: TEXT_MODEL,
     contents: prompt,
     config: {
-      temperature: 0.8,
+      temperature: 0.75,
       maxOutputTokens: 2048,
     },
   });
@@ -122,7 +132,7 @@ async function generateImageDataUrl(
   const parts: Array<
     | { text: string }
     | { inlineData: { mimeType: string; data: string } }
-  > = [{ text: `${SAFETY_PREFIX}\n\n${prompt}` }];
+  > = [{ text: `${SAFETY_PREFIX}\n\n${PHOTO_COMIC_STYLE}\n\n${prompt}` }];
 
   if (photo) {
     parts.push({
@@ -162,7 +172,7 @@ function moderationFail(text: string): boolean {
 }
 
 /**
- * Live Gemini generation. Photo is used in-memory only and never returned to storage.
+ * Live Gemini photo→comic strip generation. Photo stays in-memory only.
  */
 export async function generateComicWithGemini(input: {
   childName: string;
@@ -179,7 +189,11 @@ export async function generateComicWithGemini(input: {
   const script = await generateScript(ai, name, input.themeId, input.ageRange);
 
   for (const panel of script.panels) {
-    if (moderationFail(`${panel.caption} ${panel.imagePrompt} ${script.title}`)) {
+    if (
+      moderationFail(
+        `${panel.caption} ${panel.speechBubble} ${panel.imagePrompt} ${script.title}`
+      )
+    ) {
       throw new Error(
         "Safety filter blocked this story. Please try another theme or regenerate."
       );
@@ -187,12 +201,13 @@ export async function generateComicWithGemini(input: {
   }
 
   const coverPrompt = `
-Create a children's comic book FRONT COVER illustration.
-Theme: ${theme.name}. Style: ${spec.artStyle}.
-The uploaded photo is the child who must become a stylized cartoon avatar as the hero.
-Show "${name}" as a joyful cartoon character for "${script.title}".
-Include storybook cover composition, soft lighting, original costume only.
-Do NOT render any readable text, logos, watermarks, or franchise symbols in the image.
+PHOTO COMIC COVER (front of the strip).
+Title vibe: "${script.title}" starring ${name}.
+Theme: ${theme.name}. Art: ${spec.artStyle}.
+Use the uploaded photo as the likeness reference — convert the child into a stylized comic avatar
+(same face features, hair, skin tone, approximate age) in theme costume.
+Portrait-friendly cover composition with bold comic border.
+Do NOT paint any title text, logos, or watermarks on the image.
 `.trim();
 
   const coverImage = await generateImageDataUrl(ai, coverPrompt, photo);
@@ -205,14 +220,16 @@ Do NOT render any readable text, logos, watermarks, or franchise symbols in the 
   const panels = [];
   for (let i = 0; i < script.panels.length; i++) {
     const p = script.panels[i];
+    const bubble = p.speechBubble || p.caption.slice(0, 48);
     const panelPrompt = `
-Children's comic PANEL ${i + 1} of 4 for "${script.title}".
-Scene: ${p.sceneLabel}.
-Visual: ${p.imagePrompt}.
-Style: ${spec.artStyle}.
-Keep the same stylized child hero (from the reference images) consistent.
-Single panel illustration, no comic lettering, no speech bubbles, no logos.
-Age-appropriate, fully clothed, gentle adventure.
+PHOTO COMIC STRIP PANEL ${i + 1} of 4 (single framed panel, not a full page).
+Scene label: ${p.sceneLabel}
+Action: ${p.imagePrompt}
+Theme art: ${spec.artStyle}
+Draw the SAME stylized child hero as in the reference images (strong facial likeness to the photo).
+Include one friendly comic SPEECH BUBBLE with exactly this dialogue: "${bubble}"
+Thick black panel border, comic ink style, kids-safe adventure.
+No logos, no franchise costumes, no extra watermarks.
 `.trim();
 
     const imageDataUrl = await generateImageDataUrl(
@@ -226,12 +243,12 @@ Age-appropriate, fully clothed, gentle adventure.
       id: `panel-${i + 1}`,
       sceneLabel: p.sceneLabel,
       caption: p.caption,
+      speechBubble: bubble,
       bg: p.bg,
       imageDataUrl: imageDataUrl ?? undefined,
     });
   }
 
-  // Fail closed if nothing visual was produced
   const anyImage =
     Boolean(coverImage) || panels.some((p) => Boolean(p.imageDataUrl));
   if (!anyImage) {
@@ -250,7 +267,7 @@ Age-appropriate, fully clothed, gentle adventure.
     panels,
     moderated: true,
     madeWithAi: true,
-    modelAttribution: `Avatar & comic generated using Google Gemini (${TEXT_MODEL} + ${IMAGE_MODEL})`,
+    modelAttribution: `Photo comic generated using Google Gemini (${TEXT_MODEL} + ${IMAGE_MODEL})`,
     createdAt: new Date().toISOString(),
   };
 }

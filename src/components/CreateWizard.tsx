@@ -487,7 +487,7 @@ export function CreateWizard() {
             )}
             <div className="p-6">
               <p className="text-xs font-semibold uppercase tracking-widest opacity-90">
-                StoryToon · Front cover
+                StoryToon · Photo comic cover
               </p>
               <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold">
                 {comic.title}
@@ -499,32 +499,48 @@ export function CreateWizard() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {comic.panels.map((panel) => (
-              <article
-                key={panel.id}
-                className="overflow-hidden rounded-2xl shadow-sm"
-                style={{ background: panel.bg }}
-              >
-                {panel.imageDataUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={panel.imageDataUrl}
-                    alt={panel.sceneLabel}
-                    className="aspect-square w-full object-cover sm:aspect-[4/3]"
-                  />
-                )}
-                <div className="p-4">
-                  <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-[#1B3A4B]">
-                    {panel.sceneLabel}
-                  </h2>
-                  <p className="mt-1 text-sm text-[#1B3A4B]/85">{panel.caption}</p>
-                  <p className="mt-3 text-[10px] uppercase tracking-wide text-[#1B3A4B]/45">
-                    Made with AI
-                  </p>
-                </div>
-              </article>
-            ))}
+          {/* Classic 2×2 photo-comic strip layout (Fotojet-like strip UX) */}
+          <div className="overflow-hidden rounded-2xl border-4 border-[#1B3A4B] bg-[#1B3A4B] shadow-lg">
+            <div className="bg-[#1B3A4B] px-3 py-2 text-center text-xs font-bold uppercase tracking-widest text-white/90">
+              Comic strip · 4 panels
+            </div>
+            <div className="grid grid-cols-2 gap-1 bg-[#1B3A4B] p-1 sm:gap-1.5 sm:p-1.5">
+              {comic.panels.map((panel, index) => (
+                <article
+                  key={panel.id}
+                  className="overflow-hidden bg-[#FFF8F0]"
+                >
+                  <div className="relative aspect-square bg-[#FFE8DC]">
+                    {panel.imageDataUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={panel.imageDataUrl}
+                        alt={panel.sceneLabel}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center p-3 text-center text-xs text-[#1B3A4B]/60">
+                        Panel {index + 1}
+                      </div>
+                    )}
+                    <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {index + 1}
+                    </span>
+                  </div>
+                  <div className="border-t-2 border-[#1B3A4B] px-2 py-2">
+                    <p className="font-[family-name:var(--font-display)] text-xs font-bold text-[#1B3A4B] sm:text-sm">
+                      {panel.sceneLabel}
+                    </p>
+                    <p className="mt-0.5 line-clamp-3 text-[11px] leading-snug text-[#1B3A4B]/80 sm:text-xs">
+                      {panel.caption}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <p className="bg-[#1B3A4B] px-3 py-2 text-center text-[10px] uppercase tracking-wide text-white/70">
+              Made with AI · Photo stylized into original comic art
+            </p>
           </div>
 
           <label className="block text-sm font-semibold text-[#1B3A4B]">
