@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type {
   AgeRange,
   ChildDetails,
@@ -42,6 +42,8 @@ export function CreateWizard() {
   const [comic, setComic] = useState<GeneratedComic | null>(null);
   const [dedication, setDedication] = useState("");
   const [progressMsg, setProgressMsg] = useState("Warming up the comic engine…");
+  /** Kept for regenerate; cleared on export / new comic. Never sent to storage. */
+  const photoRef = useRef<string | null>(null);
 
   const suggestions = useMemo(
     () => suggestedThemeIds(details.ageRange, details.gender),
@@ -90,9 +92,11 @@ export function CreateWizard() {
     setError(null);
     const reader = new FileReader();
     reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : null;
+      photoRef.current = dataUrl;
       setDetails((d) => ({
         ...d,
-        photoDataUrl: typeof reader.result === "string" ? reader.result : null,
+        photoDataUrl: dataUrl,
       }));
     };
     reader.readAsDataURL(file);
@@ -121,12 +125,28 @@ export function CreateWizard() {
 
   async function generate() {
     if (!session || !themeId) return;
+    const photo = photoRef.current || details.photoDataUrl;
+    if (!photo) {
+      setError("Please add a photo again before generating.");
+      setStep("details");
+      return;
+    }
     setError(null);
     setStep("generating");
     setBusy(true);
-    setProgressMsg("Drawing your child’s stylized avatar…");
-    const t1 = setTimeout(() => setProgressMsg("Building comic panels…"), 900);
-    const t2 = setTimeout(() => setProgressMsg("Running safety checks…"), 1800);
+    setProgressMsg("Writing your themed story with Gemini…");
+    const t1 = setTimeout(
+      () => setProgressMsg("Drawing the cover avatar from your photo…"),
+      2500
+    );
+    const t2 = setTimeout(
+      () => setProgressMsg("Illustrating comic panels (this can take a minute)…"),
+      8000
+    );
+    const t3 = setTimeout(
+      () => setProgressMsg("Running safety checks on the panels…"),
+      25000
+    );
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -135,14 +155,15 @@ export function CreateWizard() {
           sessionId: session.id,
           childName: details.firstName,
           themeId,
-          // Sent for future Gemini path; server does not persist it.
-          photoDataUrl: details.photoDataUrl,
+          ageRange: details.ageRange,
+          // In-memory only for this request — server does not persist the photo.
+          photoDataUrl: photo,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Generation failed");
       setComic(data.comic);
-      // Clear photo from client memory after generation
+      // Hide preview of raw photo in UI; keep ref for regenerate
       setDetails((d) => ({ ...d, photoDataUrl: null }));
       setStep("preview");
     } catch (e) {
@@ -151,6 +172,7 @@ export function CreateWizard() {
     } finally {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
       setBusy(false);
     }
   }
@@ -452,35 +474,55 @@ export function CreateWizard() {
       {step === "preview" && comic && (
         <section className="space-y-5">
           <div
-            className="cover-shine overflow-hidden rounded-3xl p-6 text-white shadow-lg"
+            className="cover-shine overflow-hidden rounded-3xl text-white shadow-lg"
             style={{ background: `linear-gradient(145deg, ${comic.coverAccent}, #1B3A4B)` }}
           >
-            <p className="text-xs font-semibold uppercase tracking-widest opacity-90">
-              StoryToon · Front cover
-            </p>
-            <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold">
-              {comic.title}
-            </h1>
-            <p className="mt-2 text-lg">Starring {comic.childName}</p>
-            <p className="mt-6 inline-block rounded-md bg-black/25 px-2 py-1 text-xs">
-              Made with AI
-            </p>
+            {comic.coverImageDataUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={comic.coverImageDataUrl}
+                alt={`${comic.title} cover`}
+                className="aspect-[4/3] w-full object-cover"
+              />
+            )}
+            <div className="p-6">
+              <p className="text-xs font-semibold uppercase tracking-widest opacity-90">
+                StoryToon · Front cover
+              </p>
+              <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold">
+                {comic.title}
+              </h1>
+              <p className="mt-2 text-lg">Starring {comic.childName}</p>
+              <p className="mt-4 inline-block rounded-md bg-black/25 px-2 py-1 text-xs">
+                Made with AI
+              </p>
+            </div>
           </div>
 
           <div className="space-y-3">
             {comic.panels.map((panel) => (
               <article
                 key={panel.id}
-                className="rounded-2xl p-4 shadow-sm"
+                className="overflow-hidden rounded-2xl shadow-sm"
                 style={{ background: panel.bg }}
               >
-                <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-[#1B3A4B]">
-                  {panel.sceneLabel}
-                </h2>
-                <p className="mt-1 text-sm text-[#1B3A4B]/85">{panel.caption}</p>
-                <p className="mt-3 text-[10px] uppercase tracking-wide text-[#1B3A4B]/45">
-                  Made with AI
-                </p>
+                {panel.imageDataUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={panel.imageDataUrl}
+                    alt={panel.sceneLabel}
+                    className="aspect-square w-full object-cover sm:aspect-[4/3]"
+                  />
+                )}
+                <div className="p-4">
+                  <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-[#1B3A4B]">
+                    {panel.sceneLabel}
+                  </h2>
+                  <p className="mt-1 text-sm text-[#1B3A4B]/85">{panel.caption}</p>
+                  <p className="mt-3 text-[10px] uppercase tracking-wide text-[#1B3A4B]/45">
+                    Made with AI
+                  </p>
+                </div>
               </article>
             ))}
           </div>
@@ -564,6 +606,7 @@ export function CreateWizard() {
               setComic(null);
               setThemeId(null);
               setDedication("");
+              photoRef.current = null;
               setDetails({
                 firstName: "",
                 ageRange: "6-8",

@@ -38,6 +38,8 @@ export interface ComicPanel {
   caption: string;
   sceneLabel: string;
   bg: string;
+  /** Ephemeral base64 data URL from Gemini — not persisted server-side long-term */
+  imageDataUrl?: string;
 }
 
 export interface GeneratedComic {
@@ -46,6 +48,7 @@ export interface GeneratedComic {
   childName: string;
   dedication: string;
   coverAccent: string;
+  coverImageDataUrl?: string;
   panels: ComicPanel[];
   moderated: true;
   madeWithAi: true;

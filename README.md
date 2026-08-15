@@ -21,13 +21,31 @@ Open [http://localhost:3000](http://localhost:3000) — works on phone browsers 
 | Google Sign-In consent UI (demo session until OAuth keys) | Done |
 | Child details, camera/gallery, blocking photo consent | Done |
 | 5 original themes + smart suggestions | Done |
-| Generate API (quota, no photo persistence) | Done (demo comic; Gemini hook ready) |
-| Preview, dedication, Made with AI, Report | Done |
-| PDF download | Done |
+| **Gemini story + cover/panel image generation** | Done (requires `GEMINI_API_KEY`) |
+| Preview with AI images, dedication, Made with AI | Done |
+| PDF download (includes generated images) | Done |
 | Drive save button (needs Drive OAuth) | Stub |
 | `/api/health`, `/api/purge` (24h TTL backstop) | Done |
 | PWA manifest + icons | Done |
 | Capacitor store packaging | Next phase |
+
+## Gemini setup (required for real comics)
+
+1. Create an API key: [Google AI Studio](https://aistudio.google.com/apikey)
+2. Copy `.env.example` → `.env.local` and set:
+
+```bash
+GEMINI_API_KEY=your_key_here
+```
+
+3. Restart `npm run dev`
+
+Generation flow:
+1. Gemini text model writes a 4-panel script from the **theme templates**
+2. Gemini image model draws the cover avatar from the uploaded photo
+3. Each panel is illustrated with the same character reference
+4. Photos stay in memory for the request only — never written to disk/DB
+
 
 ## Scripts
 

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { buildMockComic } from "@/lib/comic-mock";
+import { generateComicWithGemini } from "@/lib/gemini";
 import { sanitizeText } from "@/lib/sanitize";
 import { getSessionMeta, purgeExpired, saveComicMeta } from "@/lib/session";
-import type { ThemeId } from "@/lib/types";
+import type { AgeRange, ThemeId } from "@/lib/types";
 import { THEMES } from "@/lib/themes";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
 const DAILY_LIMIT = Number(process.env.DAILY_GENERATION_LIMIT ?? 5);
 const usage = new Map<string, { day: string; count: number }>();
@@ -29,7 +30,8 @@ export async function POST(req: Request) {
     sessionId?: string;
     childName?: string;
     themeId?: ThemeId;
-    /** Photo may be sent for live Gemini; never written to disk/DB. */
+    ageRange?: AgeRange;
+    /** Used only in this request for Gemini — never written to disk/DB. */
     photoDataUrl?: string | null;
   };
 
@@ -57,14 +59,49 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Child first name is required." }, { status: 400 });
   }
 
-  // Intentionally do not store photoDataUrl. It is discarded after this request.
-  void body.photoDataUrl;
+  if (!body.photoDataUrl || !body.photoDataUrl.startsWith("data:image/")) {
+    return NextResponse.json(
+      { error: "A photo is required for AI comic generation." },
+      { status: 400 }
+    );
+  }
 
-  // Simulate generation latency
-  await new Promise((r) => setTimeout(r, 1200));
+  if (!process.env.GEMINI_API_KEY?.trim()) {
+    return NextResponse.json(
+      {
+        error:
+          "Gemini is not configured. Add GEMINI_API_KEY to .env.local and restart the server.",
+        code: "MISSING_GEMINI_KEY",
+      },
+      { status: 503 }
+    );
+  }
 
-  const comic = buildMockComic(childName, body.themeId);
-  saveComicMeta(body.sessionId, comic);
+  try {
+    const comic = await generateComicWithGemini({
+      childName,
+      themeId: body.themeId,
+      photoDataUrl: body.photoDataUrl,
+      ageRange: body.ageRange,
+    });
 
-  return NextResponse.json({ comic });
+    // Persist metadata only (no images / no raw photo)
+    saveComicMeta(body.sessionId, {
+      ...comic,
+      coverImageDataUrl: undefined,
+      panels: comic.panels.map((panel) => ({
+        id: panel.id,
+        caption: panel.caption,
+        sceneLabel: panel.sceneLabel,
+        bg: panel.bg,
+      })),
+    });
+
+    return NextResponse.json({ comic });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Comic generation failed.";
+    console.error("[generate]", message);
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 }
