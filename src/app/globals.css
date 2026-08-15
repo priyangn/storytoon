@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fff8f0;
+  --foreground: #1b3a4b;
+  --story-coral: #ff6b35;
+  --story-sky: #1b6ca8;
+  --story-sun: #ffb347;
+  --story-ink: #1b3a4b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body), system-ui, sans-serif;
+  min-height: 100dvh;
+}
+
+/* Soft sky → sun atmosphere (not flat) */
+.app-sky {
+  background:
+    radial-gradient(ellipse 120% 80% at 10% -10%, #ffe8c8 0%, transparent 55%),
+    radial-gradient(ellipse 90% 70% at 100% 0%, #c8e8ff 0%, transparent 50%),
+    radial-gradient(ellipse 80% 50% at 50% 100%, #ffd4c0 0%, transparent 45%),
+    #fff8f0;
+}
+
+.mascot-bounce {
+  animation: bounce-soft 1.4s ease-in-out infinite;
+}
+
+@keyframes bounce-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.cover-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.cover-shine::after {
+  content: "";
+  position: absolute;
+  inset: -40% auto auto -20%;
+  width: 60%;
+  height: 180%;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.22) 50%,
+    transparent 60%
+  );
+  animation: shine 4s ease-in-out infinite;
+}
+
+@keyframes shine {
+  0%,
+  100% {
+    transform: translateX(0) rotate(12deg);
+  }
+  50% {
+    transform: translateX(120%) rotate(12deg);
+  }
+}
+
+.hero-float {
+  animation: float-y 5s ease-in-out infinite;
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+/* Thumb-friendly tap targets on mobile */
+@media (max-width: 640px) {
+  button,
+  a,
+  label {
+    touch-action: manipulation;
+  }
+}

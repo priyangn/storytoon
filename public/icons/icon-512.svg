@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="StoryToon">
+  <rect width="512" height="512" rx="96" fill="#FF6B35"/>
+  <rect x="96" y="128" width="320" height="256" rx="40" fill="#FFF8F0"/>
+  <circle cx="192" cy="236" r="36" fill="#1B6CA8"/>
+  <circle cx="320" cy="236" r="36" fill="#FFB347"/>
+  <path d="M160 332h192" stroke="#1B3A4B" stroke-width="20" stroke-linecap="round"/>
+</svg>
